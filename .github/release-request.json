@@ -1,8 +1,8 @@
 {
   "version": "0.1.0",
   "release_label": "0.1.0-test20",
-  "publish": false,
+  "publish": true,
   "draft": false,
   "prerelease": true,
-  "request_id": 2
+  "request_id": 3
 }
