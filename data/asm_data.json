@@ -1,0 +1,64 @@
+{
+  "windows": {
+    "smart_thread_manager": {
+      "name": "window_smart_thread_manager",
+      "icon": "brain",
+      "description": "window_stm_desc",
+      "scene": "../../mods-unpacked/guardipee14-AdaptiveSmartManager/scenes/windows/window_smart_thread_manager",
+      "group": "",
+      "category": "cpu",
+      "sub_category": "management",
+      "level": 0,
+      "requirement": "perk.thread_manager",
+      "hidden": true,
+      "attribute": "",
+      "attribute_cost": 0,
+      "attributes": {"limit": -1},
+      "data": {},
+      "guide": "window_smart_thread_manager"
+    },
+    "smart_gpu_manager": {
+      "name": "window_smart_gpu_manager",
+      "icon": "brain",
+      "description": "window_sgm_desc",
+      "scene": "../../mods-unpacked/guardipee14-AdaptiveSmartManager/scenes/windows/window_smart_gpu_manager",
+      "group": "",
+      "category": "gpu",
+      "sub_category": "management",
+      "level": 0,
+      "requirement": "research.gpu_manager",
+      "hidden": true,
+      "attribute": "",
+      "attribute_cost": 0,
+      "attributes": {"limit": -1},
+      "data": {},
+      "guide": "window_smart_gpu_manager"
+    }
+  },
+  "guides": {
+    "window_smart_thread_manager": {
+      "name": "window_smart_thread_manager",
+      "icon": "brain",
+      "type": 1,
+      "entries": [
+        {"text": "guide_window_smart_thread_manager", "level": 0, "requirement": "perk.thread_manager"},
+        {"text": "guide_window_smart_thread_manager_chaining", "level": 0, "requirement": "perk.thread_manager"},
+        {"text": "guide_window_smart_thread_manager_ratio", "level": 0, "requirement": "perk.thread_manager"},
+        {"text": "guide_window_smart_thread_manager_demand", "level": 0, "requirement": "perk.thread_manager"},
+        {"text": "guide_window_smart_thread_manager_graph", "level": 0, "requirement": "perk.thread_manager"}
+      ]
+    },
+    "window_smart_gpu_manager": {
+      "name": "window_smart_gpu_manager",
+      "icon": "brain",
+      "type": 1,
+      "entries": [
+        {"text": "guide_window_smart_gpu_manager", "level": 0, "requirement": "research.gpu_manager"},
+        {"text": "guide_window_smart_thread_manager_chaining", "level": 0, "requirement": "research.gpu_manager"},
+        {"text": "guide_window_smart_thread_manager_ratio", "level": 0, "requirement": "research.gpu_manager"},
+        {"text": "guide_window_smart_thread_manager_demand", "level": 0, "requirement": "research.gpu_manager"},
+        {"text": "guide_window_smart_thread_manager_graph", "level": 0, "requirement": "research.gpu_manager"}
+      ]
+    }
+  }
+}
