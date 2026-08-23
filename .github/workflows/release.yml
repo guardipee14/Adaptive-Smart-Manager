@@ -1,0 +1,135 @@
+name: Build / Publish ASM Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_label:
+        description: Release label (for example 0.1.0-test20 or 0.1.0)
+        required: true
+        type: string
+      publish:
+        description: Publish a GitHub Release after validation
+        required: true
+        type: boolean
+        default: false
+      draft:
+        description: Publish as a draft release
+        required: true
+        type: boolean
+        default: false
+      prerelease:
+        description: Mark the GitHub Release as a prerelease
+        required: true
+        type: boolean
+        default: false
+  push:
+    branches:
+      - main
+    paths:
+      - .github/release-request.json
+
+permissions:
+  contents: write
+
+concurrency:
+  group: adaptive-smart-manager-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and verify ASM release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out exact release source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release request
+        id: request
+        shell: pwsh
+        run: |
+          $manifest = Get-Content -LiteralPath './manifest.json' -Raw | ConvertFrom-Json
+          $manifestVersion = [string]$manifest.version_number
+
+          if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
+              $label = '${{ inputs.release_label }}'
+              $publish = '${{ inputs.publish }}'
+              $draft = '${{ inputs.draft }}'
+              $prerelease = '${{ inputs.prerelease }}'
+          }
+          else {
+              $request = Get-Content -LiteralPath './.github/release-request.json' -Raw | ConvertFrom-Json
+
+              if ([string]$request.version -ne $manifestVersion) {
+                  throw "Release request version '$($request.version)' does not match manifest version '$manifestVersion'."
+              }
+
+              $label = [string]$request.release_label
+              $publish = ([bool]$request.publish).ToString().ToLowerInvariant()
+              $draft = ([bool]$request.draft).ToString().ToLowerInvariant()
+              $prerelease = ([bool]$request.prerelease).ToString().ToLowerInvariant()
+          }
+
+          if ([string]::IsNullOrWhiteSpace($label)) {
+              throw 'Release label is empty.'
+          }
+
+          "release_label=$label" >> $env:GITHUB_OUTPUT
+          "publish=$publish" >> $env:GITHUB_OUTPUT
+          "draft=$draft" >> $env:GITHUB_OUTPUT
+          "prerelease=$prerelease" >> $env:GITHUB_OUTPUT
+
+      - name: Build, verify, and optionally publish
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $parameters = @{
+              ReleaseLabel = '${{ steps.request.outputs.release_label }}'
+          }
+
+          if ('${{ steps.request.outputs.publish }}' -eq 'true') {
+              $parameters.Publish = $true
+          }
+
+          if ('${{ steps.request.outputs.draft }}' -eq 'true') {
+              $parameters.Draft = $true
+          }
+
+          if ('${{ steps.request.outputs.prerelease }}' -eq 'true') {
+              $parameters.Prerelease = $true
+          }
+
+          ./tools/New-Release.ps1 @parameters
+
+      - name: Upload verified release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-smart-manager-${{ steps.request.outputs.release_label }}-${{ github.run_number }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            release/*.zip
+            release/*.sha256
+            release/*-release-notes.md
+
+      - name: Write release summary
+        shell: pwsh
+        run: |
+          $label = '${{ steps.request.outputs.release_label }}'
+          $archive = "guardipee14-AdaptiveSmartManager-v$label.zip"
+          $checksum = Get-Content -LiteralPath "./release/$archive.sha256" -Raw
+          $sha256 = $checksum.Split(' ')[0].Trim()
+
+          @"
+          ## Adaptive Smart Manager v$label
+
+          - Source commit: ``${{ github.sha }}``
+          - Archive: ``$archive``
+          - SHA-256: ``$sha256``
+          - Publish requested: ``${{ steps.request.outputs.publish }}``
+          - Draft: ``${{ steps.request.outputs.draft }}``
+          - Prerelease: ``${{ steps.request.outputs.prerelease }}``
+          "@ | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
