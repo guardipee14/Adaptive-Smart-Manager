@@ -81,28 +81,130 @@ jobs:
           "draft=$draft" >> $env:GITHUB_OUTPUT
           "prerelease=$prerelease" >> $env:GITHUB_OUTPUT
 
-      - name: Build, verify, and optionally publish
+      - name: Build and verify package
+        shell: pwsh
+        run: |
+          ./tools/New-Release.ps1 -ReleaseLabel '${{ steps.request.outputs.release_label }}'
+
+      - name: Create or repair GitHub Release
+        if: steps.request.outputs.publish == 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $parameters = @{
-              ReleaseLabel = '${{ steps.request.outputs.release_label }}'
+          $label = '${{ steps.request.outputs.release_label }}'
+          $tag = "v$label"
+          $repository = '${{ github.repository }}'
+          $archiveName = "guardipee14-AdaptiveSmartManager-v$label.zip"
+          $archivePath = "./release/$archiveName"
+          $checksumName = "$archiveName.sha256"
+          $checksumPath = "./release/$checksumName"
+          $notesPath = "./release/guardipee14-AdaptiveSmartManager-v$label-release-notes.md"
+          $draft = '${{ steps.request.outputs.draft }}' -eq 'true'
+          $prerelease = '${{ steps.request.outputs.prerelease }}' -eq 'true'
+
+          $existingJson = & gh release view $tag --repo $repository --json tagName,url,isDraft,isPrerelease,assets 2>$null
+          $releaseExists = $LASTEXITCODE -eq 0
+
+          if ($releaseExists) {
+              Write-Host "Release $tag already exists. Updating metadata and repairing missing assets."
+
+              $editArguments = @(
+                  'release', 'edit', $tag,
+                  '--repo', $repository,
+                  '--title', "Adaptive Smart Manager v$label",
+                  '--notes-file', $notesPath,
+                  "--draft=$($draft.ToString().ToLowerInvariant())",
+                  "--prerelease=$($prerelease.ToString().ToLowerInvariant())"
+              )
+
+              & gh @editArguments
+              if ($LASTEXITCODE -ne 0) {
+                  throw "Unable to update existing GitHub Release $tag."
+              }
+
+              $existing = $existingJson | ConvertFrom-Json
+              $assetNames = @($existing.assets | ForEach-Object { [string]$_.name })
+              $missingAssets = @()
+
+              if ($archiveName -notin $assetNames) {
+                  $missingAssets += $archivePath
+              }
+
+              if ($checksumName -notin $assetNames) {
+                  $missingAssets += $checksumPath
+              }
+
+              if ($missingAssets.Count -gt 0) {
+                  $uploadArguments = @('release', 'upload', $tag) + $missingAssets + @('--repo', $repository)
+                  & gh @uploadArguments
+
+                  if ($LASTEXITCODE -ne 0) {
+                      throw "Unable to upload missing assets to GitHub Release $tag."
+                  }
+              }
+              else {
+                  Write-Host "Release $tag already contains both verified assets."
+              }
+          }
+          else {
+              $createArguments = @(
+                  'release', 'create', $tag,
+                  $archivePath,
+                  $checksumPath,
+                  '--repo', $repository,
+                  '--target', '${{ github.sha }}',
+                  '--title', "Adaptive Smart Manager v$label",
+                  '--notes-file', $notesPath
+              )
+
+              if ($draft) {
+                  $createArguments += '--draft'
+              }
+
+              if ($prerelease) {
+                  $createArguments += '--prerelease'
+              }
+
+              & gh @createArguments
+              if ($LASTEXITCODE -ne 0) {
+                  throw "GitHub Release creation failed for $tag."
+              }
           }
 
-          if ('${{ steps.request.outputs.publish }}' -eq 'true') {
-              $parameters.Publish = $true
+      - name: Verify requested GitHub Release
+        id: published_release
+        if: steps.request.outputs.publish == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $label = '${{ steps.request.outputs.release_label }}'
+          $tag = "v$label"
+          $archiveName = "guardipee14-AdaptiveSmartManager-v$label.zip"
+          $checksumName = "$archiveName.sha256"
+
+          $releaseJson = & gh release view $tag --repo '${{ github.repository }}' --json tagName,url,isDraft,isPrerelease,assets
+          if ($LASTEXITCODE -ne 0) {
+              throw "Requested GitHub Release $tag does not exist."
           }
 
-          if ('${{ steps.request.outputs.draft }}' -eq 'true') {
-              $parameters.Draft = $true
+          $release = $releaseJson | ConvertFrom-Json
+          if ([string]$release.tagName -ne $tag) {
+              throw "Release tag verification failed. Expected $tag, got '$($release.tagName)'."
           }
 
-          if ('${{ steps.request.outputs.prerelease }}' -eq 'true') {
-              $parameters.Prerelease = $true
+          $assetNames = @($release.assets | ForEach-Object { [string]$_.name })
+          if ($archiveName -notin $assetNames) {
+              throw "GitHub Release $tag is missing ZIP asset $archiveName."
           }
 
-          ./tools/New-Release.ps1 @parameters
+          if ($checksumName -notin $assetNames) {
+              throw "GitHub Release $tag is missing checksum asset $checksumName."
+          }
+
+          "release_url=$($release.url)" >> $env:GITHUB_OUTPUT
+          Write-Host "Verified GitHub Release: $($release.url)"
 
       - name: Upload verified release bundle
         uses: actions/upload-artifact@v6
@@ -122,6 +224,7 @@ jobs:
           $archive = "guardipee14-AdaptiveSmartManager-v$label.zip"
           $checksum = Get-Content -LiteralPath "./release/$archive.sha256" -Raw
           $sha256 = $checksum.Split(' ')[0].Trim()
+          $releaseUrl = '${{ steps.published_release.outputs.release_url }}'
 
           @"
           ## Adaptive Smart Manager v$label
@@ -132,4 +235,5 @@ jobs:
           - Publish requested: ``${{ steps.request.outputs.publish }}``
           - Draft: ``${{ steps.request.outputs.draft }}``
           - Prerelease: ``${{ steps.request.outputs.prerelease }}``
+          - Release URL: ``$releaseUrl``
           "@ | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
