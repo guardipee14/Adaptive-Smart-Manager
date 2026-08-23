@@ -49,9 +49,12 @@ The current build is still labeled **test** while the final ASM + AAC compatibil
 ## Installation
 
 1. Remove/disable the original `kuuk-SmartThreadManager` and `kuuk-SmartGPUManager` mods. ASM registers the same window ids and must not run alongside them.
-2. Download the exact tested ZIP from [`dist/guardipee14-AdaptiveSmartManager-v0.1.0-test20.zip`](dist/guardipee14-AdaptiveSmartManager-v0.1.0-test20.zip).
-3. Place the ZIP in your Upload Labs `mods` folder.
-4. Start Upload Labs and verify both Smart Thread Manager and Smart GPU Manager appear normally in your existing save.
+2. Download the current public-test package `guardipee14-AdaptiveSmartManager-v0.1.0-test20.zip` from the public-test announcement/Discord attachment.
+3. Verify SHA-256: `b3b8aad369e28ce19874dee6bceec0e07d84de9c3914ac05ed708f7fe66c7dfc`.
+4. Place the ZIP in your Upload Labs `mods` folder.
+5. Start Upload Labs and verify both Smart Thread Manager and Smart GPU Manager appear normally in your existing save.
+
+Public-test notes and feedback thread: [Issue #1](https://github.com/guardipee14/Adaptive-Smart-Manager/issues/1).
 
 For the default Steam location used during development, the mod folder was:
 
