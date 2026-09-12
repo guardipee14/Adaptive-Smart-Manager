@@ -130,9 +130,9 @@ func get_goal() -> float:
 
 
 func update() -> void:
-    # Kept for compatibility with the original Smart Manager data object.
-    # Runtime demand normalization intentionally remains cached after binding,
-    # matching the original 3.0.0 behavior validated during ASM testing.
+    # Original 3.0.0 defines this refresh but never calls it. Adaptive Smart
+    # Manager calls it each tick so dynamic `required` changes cannot leave
+    # demand normalization stale.
     for data in container_data.values():
         data.update()
 

@@ -32,12 +32,21 @@ static func distribution_demand(value: float, state: Dictionary) -> void:
     state.demand = _get_demand_sum(state.demands)
 
     if is_zero_approx(value):
+        # Original bug: `return` lived inside this loop, which could leave
+        # every target after the first one with a stale count.
         for wd in state.wdata.values():
             wd.set_count(0.0)
         return
 
     var remaining := _set_targets_demand(value, state)
 
+    # Demand mode is demand-first, not demand-capped. After every finite
+    # target has received its calculated demand, keep using the full incoming
+    # supply. Existing uncapped/storage targets retain first claim on true
+    # leftovers (matching the GPU-manager behavior). If there are no uncapped
+    # targets, distribute the surplus back across finite targets using demand
+    # as the weight. This guarantees total Demand-mode allocation tracks the
+    # available supply instead of leaving usable Thread CPU idle.
     if remaining > 0.0 and state.storages.is_empty():
         remaining = _boost_finite_targets_with_surplus(remaining, state)
 
@@ -64,6 +73,14 @@ static func _set_targets_demand(value: float, state: Dictionary) -> float:
             wdata[name].set_count(0.0)
         return 0.0
 
+    # Preserve Demand mode's small-demand-first behavior, but fix the
+    # pathological shortage tail from the original 3.0.0 implementation.
+    # The old code gave the first unsatisfied target 90% of the remaining
+    # supply, then the next target 90% of the new remainder, producing an
+    # exponential 10x allocation ladder (GHz -> MHz -> kHz -> Hz -> 0).
+    # Once a sorted target cannot be fully satisfied, every remaining target
+    # has demand >= that target, so the remaining supply can be split evenly
+    # across the unsatisfied tail without exceeding any target's demand.
     targets.sort_custom(
         func(a, b): return demands[a] < demands[b]
     )
@@ -99,6 +116,8 @@ static func _set_targets_demand(value: float, state: Dictionary) -> float:
         remaining = 0.0
         break
 
+    # Demand mode intentionally gives storage/uncapped targets only true
+    # leftover supply after finite consumers are handled.
     return (
         0.0
         if value < float(state.demand)
@@ -136,6 +155,9 @@ static func _boost_finite_targets_with_surplus(
             var bonus := surplus * base_demand / positive_demand_total
             wdata[name].set_count(base_demand + bonus)
     else:
+        # If every calculated demand is currently zero, there is no useful
+        # demand weight. Split the available supply evenly so Demand mode still
+        # honors the full-utilization rule rather than silently dropping it.
         var share := surplus / float(targets.size())
         for name in targets:
             wdata[name].set_count(share)
@@ -229,6 +251,8 @@ static func _set_storages(remaining: float, state: Dictionary) -> void:
     var wdata = state.wdata
     var connections := int(state.storage_connections)
 
+    # Defensive fix: a storage role can transiently exist while its provided
+    # inputs are changing. Never divide by zero during that topology transition.
     if connections <= 0:
         for name in storages:
             wdata[name].set_count(0.0)

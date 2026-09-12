@@ -80,7 +80,10 @@ func _remove_node_silent(name: String) -> bool:
 
 func _connect_signals() -> void:
     if !Signals:
-        ModLoaderLog.error("Signals not found", LOG_NAME + ":_connect_signals")
+        ModLoaderLog.error(
+            "Signals not found",
+            LOG_NAME + ":_connect_signals"
+        )
         return
 
     if !Signals.is_node_ready():
@@ -106,8 +109,10 @@ func _connect_runtime_signals() -> void:
 
     if !Signals.window_deleted.is_connected(_on_window_deleted):
         Signals.window_deleted.connect(_on_window_deleted)
+
     if !Signals.connection_created.is_connected(_on_connections_changed):
         Signals.connection_created.connect(_on_connections_changed)
+
     if !Signals.connection_deleted.is_connected(_on_connections_changed):
         Signals.connection_deleted.connect(_on_connections_changed)
 
@@ -118,13 +123,18 @@ func dispose() -> void:
     if Signals:
         if Signals.window_deleted.is_connected(_on_window_deleted):
             Signals.window_deleted.disconnect(_on_window_deleted)
+
         if Signals.connection_created.is_connected(_on_connections_changed):
             Signals.connection_created.disconnect(_on_connections_changed)
+
         if Signals.connection_deleted.is_connected(_on_connections_changed):
             Signals.connection_deleted.disconnect(_on_connections_changed)
 
         var ready_callback = Callable(self, "_on_signals_ready")
-        if _waiting_for_signals_ready && Signals.ready.is_connected(ready_callback):
+        if (
+            _waiting_for_signals_ready
+            && Signals.ready.is_connected(ready_callback)
+        ):
             Signals.ready.disconnect(ready_callback)
 
     if _internal_update.is_connected(_on_internal_update):
@@ -141,8 +151,10 @@ func _on_internal_update() -> void:
 func _on_connections_changed(output: String, input: String) -> void:
     if !container_binds.has(output) && !container_binds.has(input):
         return
+
     if container_binds.has(input):
         _update_node(container_binds[input])
+
     if container_binds.has(output):
         _update_node(container_binds[output])
 
@@ -150,62 +162,128 @@ func _on_connections_changed(output: String, input: String) -> void:
 func _update_node(name: String):
     if !nodes.has(name):
         return
+
     nodes[name].update_connections()
+
     for window in DataClass.get_inputs_as_window(nodes[name].window):
         add_node_chained(window, false)
+
     for window in DataClass.get_outputs_as_window(nodes[name].window):
         add_node_chained(window, false)
+
     _internal_update.emit()
 
 
 func _on_window_deleted(window):
     if !window:
-        ModLoaderLog.error("Window doesn't exist.", LOG_NAME + ":_on_window_deleted")
+        ModLoaderLog.error(
+            "Window doesn't exist.",
+            LOG_NAME + ":_on_window_deleted"
+        )
         return
+
     remove_node(window.name)
 
 
 func _disconnect_name(existing: String, disconnected: String):
     if !nodes.has(existing):
         return
-    nodes[existing].left = nodes[existing].left.filter(func(n): return n != disconnected)
-    nodes[existing].right = nodes[existing].right.filter(func(n): return n != disconnected)
+
+    nodes[existing].left = nodes[existing].left.filter(
+        func(n): return n != disconnected
+    )
+    nodes[existing].right = nodes[existing].right.filter(
+        func(n): return n != disconnected
+    )
 
 
-func is_receiver(node: String, source: String, depth: int = 0, visited: Array = []) -> bool:
+func is_receiver(
+    node: String,
+    source: String,
+    depth: int = 0,
+    visited: Array = []
+) -> bool:
     var result = false
-    if !nodes.has(node) || !nodes.has(source) || visited.has(node) || node == source:
+
+    if (
+        !nodes.has(node)
+        || !nodes.has(source)
+        || visited.has(node)
+        || node == source
+    ):
         return result
+
     result = _depends_on(node, source)
+
     if depth > 0 && !result:
         var next_visited = visited.duplicate()
         next_visited.append(node)
-        result = nodes[node].left.filter(func(n): return !next_visited.has(n)).any(is_receiver.bind(source, depth - 1, next_visited))
+        result = nodes[node].left.filter(
+            func(n): return !next_visited.has(n)
+        ).any(
+            is_receiver.bind(source, depth - 1, next_visited)
+        )
+
     return result
 
 
-func is_supplier(node: String, target: String, depth: int = 0, visited: Array = []) -> bool:
+func is_supplier(
+    node: String,
+    target: String,
+    depth: int = 0,
+    visited: Array = []
+) -> bool:
     var result = false
-    if !nodes.has(node) || !nodes.has(target) || visited.has(node) || node == target:
+
+    if (
+        !nodes.has(node)
+        || !nodes.has(target)
+        || visited.has(node)
+        || node == target
+    ):
         return result
+
     result = _source_for(node, target)
+
     if depth > 0 && !result:
         var next_visited = visited.duplicate()
         next_visited.append(node)
-        result = nodes[node].right.filter(func(n): return !next_visited.has(n)).any(is_supplier.bind(target, depth - 1, next_visited))
+        result = nodes[node].right.filter(
+            func(n): return !next_visited.has(n)
+        ).any(
+            is_supplier.bind(target, depth - 1, next_visited)
+        )
+
     return result
 
 
-func has_connection(node: String, to: String, depth: int = 0, visited: Array = []) -> bool:
+func has_connection(
+    node: String,
+    to: String,
+    depth: int = 0,
+    visited: Array = []
+) -> bool:
     if !nodes.has(node) || !nodes.has(to) || visited.has(node):
         return false
+
     if node == to:
         return true
+
     var connection = _depends_on(node, to) || _source_for(node, to)
     var next_visited = visited.duplicate()
     next_visited.append(node)
+
     if depth > 0 && !connection:
-        connection = nodes[node].left.filter(func(n): return !next_visited.has(n)).any(has_connection.bind(to, depth - 1, next_visited)) || nodes[node].right.filter(func(n): return !next_visited.has(n)).any(has_connection.bind(to, depth - 1, next_visited))
+        connection = nodes[node].left.filter(
+            func(n): return !next_visited.has(n)
+        ).any(
+            has_connection.bind(to, depth - 1, next_visited)
+        ) || nodes[node].right.filter(
+            func(n): return !next_visited.has(n)
+        ).any(
+            has_connection.bind(to, depth - 1, next_visited)
+        )
+
     return connection
 
 
@@ -223,6 +301,7 @@ func _source_for(node_name: String, target: String) -> bool:
 
 class NodeData extends RefCounted:
     const LOG_NAME = "guardipee14:ASM:WindowGraph:NodeData"
+
     var window: WindowBase = null
     var left: Array = []
     var right: Array = []
@@ -230,24 +309,56 @@ class NodeData extends RefCounted:
 
     static func get_inputs_as_window(source: WindowBase) -> Array:
         if source:
-            return source.containers.map(func(c): return c.input).filter(func(i): return i != null).map(ASMUtils.get_parent_window)
-        ModLoaderLog.error("Window doesn't exist.", LOG_NAME + ":get_inputs_as_window")
+            return source.containers.map(
+                func(c): return c.input
+            ).filter(
+                func(i): return i != null
+            ).map(
+                ASMUtils.get_parent_window
+            )
+
+        ModLoaderLog.error(
+            "Window doesn't exist.",
+            LOG_NAME + ":get_inputs_as_window"
+        )
         return []
 
     static func get_outputs_as_window(source: WindowBase) -> Array:
         if source:
             var result = []
-            for array in source.containers.map(func(c): return c.outputs).filter(func(a): return a != null && a.size() > 0):
-                result.append_array(array.map(ASMUtils.get_parent_window).filter(func(w): return w != null))
+
+            for array in source.containers.map(
+                func(c): return c.outputs
+            ).filter(
+                func(a): return a != null && a.size() > 0
+            ):
+                result.append_array(
+                    array.map(
+                        ASMUtils.get_parent_window
+                    ).filter(
+                        func(w): return w != null
+                    )
+                )
+
             return result
-        ModLoaderLog.error("Window doesn't exist.", LOG_NAME + ":get_outputs_as_window")
+
+        ModLoaderLog.error(
+            "Window doesn't exist.",
+            LOG_NAME + ":get_outputs_as_window"
+        )
         return []
 
     func _init(target_window: WindowBase) -> void:
         window = target_window
-        container_ids = window.containers.map(func(c): return c.id)
+        container_ids = window.containers.map(
+            func(c): return c.id
+        )
         update_connections()
 
     func update_connections() -> void:
-        left = get_inputs_as_window(window).map(func(w): return w.name)
-        right = get_outputs_as_window(window).map(func(w): return w.name)
+        left = get_inputs_as_window(window).map(
+            func(w): return w.name
+        )
+        right = get_outputs_as_window(window).map(
+            func(w): return w.name
+        )
