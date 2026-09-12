@@ -6,6 +6,8 @@ It keeps the familiar player-facing manager workflow while sharing one implement
 
 > **Current public build:** `v0.1.0-test20` — release-candidate testing build.
 
+**Reconstructed candidate:** `v0.1.0-test21` (not released; fresh in-game validation pending). It preserves the original test20 manager logic, restores a compiled English translation generated from the CSV, and corrects the stale GPU description in the original binary. GitHub's test20 download differs from the original tested archive; see [recovery provenance](RECOVERY.md).
+
 ## What it keeps
 
 - Smart Thread Manager window id: `smart_thread_manager`
@@ -44,7 +46,7 @@ It keeps the familiar player-facing manager workflow while sharing one implement
 - Base `count` / `count/s` switching
 - large topology changes while AAC graph validation remained structurally clean
 
-The current build is still labeled **test** while the final ASM + AAC compatibility pass is completed.
+The original test20 package also passed AAC test7's targeted integration checks on September 11, 2026. Those results do not establish that the different GitHub test20 download or reconstructed test21 package has passed a fresh game run. See [test21 verification and build instructions](tests/README.md).
 
 ## Installation
 
@@ -68,7 +70,7 @@ Your Steam library path may be different.
 
 ASM preserves the manager ids/resources AAC expects and exposes a read-only manager snapshot. AAC does **not** receive ownership of manager distribution or automatic connection mutation through this interface.
 
-The current AAC `v0.1.14` public test still reports the original `kuuk-*` manager ids as missing. Explicit ASM detection is staged for AAC `v0.1.15` and will be validated after ASM is frozen.
+AAC `v0.1.15-test7` explicitly detects ASM. Its three targeted game checks passed with the original test20 archive in Demand mode (Thread count/s, GPU count); the reconstructed test21 package still needs a load/UI/integration smoke test. AAC does not require manager allocation changes for this package recovery.
 
 ## Attribution
 

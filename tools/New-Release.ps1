@@ -24,6 +24,7 @@ $runtimeItems = @(
     'scenes',
     'scripts',
     'translations',
+    'README.md',
     'LICENSE',
     'NOTICE.md'
 )
@@ -81,12 +82,17 @@ if ($version -notmatch '^\d+\.\d+\.\d+$') {
     throw "Manifest version is not valid semantic versioning: $version"
 }
 
-if ([string]::IsNullOrWhiteSpace($ReleaseLabel)) {
-    $ReleaseLabel = $version
+$entryPoint = Get-Content -LiteralPath (Join-Path $ProjectRoot 'mod_main.gd') -Raw
+$buildMatch = [regex]::Match($entryPoint, '(?m)^const MOD_BUILD := "([A-Za-z0-9][A-Za-z0-9.-]*)"\r?$')
+if (-not $buildMatch.Success) { throw 'mod_main.gd does not identify a valid MOD_BUILD.' }
+$expectedLabel = "$version-$($buildMatch.Groups[1].Value)"
+if ([string]::IsNullOrWhiteSpace($ReleaseLabel)) { $ReleaseLabel = $expectedLabel }
+if ($ReleaseLabel -cne $expectedLabel) {
+    throw "Release label must match the runtime build identity: $expectedLabel"
 }
-
-if ($ReleaseLabel -ne $version -and -not $ReleaseLabel.StartsWith("$version-", [System.StringComparison]::OrdinalIgnoreCase)) {
-    throw "Release label '$ReleaseLabel' must equal manifest version '$version' or start with '$version-'."
+$translationPath = Join-Path $ProjectRoot 'translations/AdaptiveSmartManager.en.translation'
+if (-not (Test-Path -LiteralPath $translationPath -PathType Leaf)) {
+    throw 'Compiled English translation is missing. Run tools/Test-Translations.ps1 -Rebuild first.'
 }
 
 $tag = "v$ReleaseLabel"
@@ -128,13 +134,12 @@ $archiveName = "$modFolderName-v$ReleaseLabel.zip"
 $archivePath = Join-Path $releaseDirectory $archiveName
 $checksumPath = "$archivePath.sha256"
 $notesPath = Join-Path $releaseDirectory "$modFolderName-v$ReleaseLabel-release-notes.md"
-$stagingPath = Join-Path $releaseDirectory "staging-$ReleaseLabel"
+$stagingPath = Join-Path $releaseDirectory ("staging-$ReleaseLabel-" + [guid]::NewGuid().ToString('N'))
 $stagedModPath = Join-Path $stagingPath "mods-unpacked/$modFolderName"
 
-Remove-Item -LiteralPath $stagingPath -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item -LiteralPath $archivePath -Force -ErrorAction SilentlyContinue
-Remove-Item -LiteralPath $checksumPath -Force -ErrorAction SilentlyContinue
-Remove-Item -LiteralPath $notesPath -Force -ErrorAction SilentlyContinue
+foreach ($outputPath in @($archivePath, $checksumPath, $notesPath)) {
+    if (Test-Path -LiteralPath $outputPath) { throw "Refusing to overwrite existing release artifact: $outputPath" }
+}
 
 New-Item -ItemType Directory -Path $stagedModPath -Force | Out-Null
 
@@ -151,7 +156,7 @@ foreach ($item in $runtimeItems) {
 }
 
 Compress-Archive -Path (Join-Path $stagingPath 'mods-unpacked') -DestinationPath $archivePath -CompressionLevel Optimal
-Remove-Item -LiteralPath $stagingPath -Recurse -Force
+# Retain the unique staging directory for source/package audit; no recursive deletion.
 
 $hash = Get-FileHash -LiteralPath $archivePath -Algorithm SHA256
 $sha256 = $hash.Hash.ToLowerInvariant()
@@ -179,6 +184,9 @@ try {
         throw "Archive manifest version '$($archiveManifest.version_number)' does not match '$version'."
     }
 
+    if ($null -eq $zip.GetEntry("mods-unpacked/$modFolderName/translations/AdaptiveSmartManager.en.translation")) {
+        throw 'Release archive is missing its compiled English translation.'
+    }
     foreach ($requiredEntry in @('mod_main.gd', 'scripts', 'scenes', 'translations')) {
         $prefix = "mods-unpacked/$modFolderName/$requiredEntry"
         $found = @($zip.Entries | Where-Object { $_.FullName.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase) }).Count -gt 0
@@ -190,6 +198,8 @@ try {
 finally {
     $zip.Dispose()
 }
+
+& (Join-Path $PSScriptRoot 'Test-Package.ps1') -Archive $archivePath -ProjectRoot $ProjectRoot
 
 $releaseNotes = "# Adaptive Smart Manager v$ReleaseLabel`n`n"
 $releaseNotes += "**Manifest version:** ``$version```n`n"

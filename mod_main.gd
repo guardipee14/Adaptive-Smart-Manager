@@ -3,6 +3,7 @@ extends Node
 const MOD_DIR := "guardipee14-AdaptiveSmartManager"
 const MOD_ID := "guardipee14-AdaptiveSmartManager"
 const MOD_VERSION := "0.1.0"
+const MOD_BUILD := "test21"
 const LOG_NAME := "guardipee14:ASM:Main"
 const RUNTIME_PREFLIGHT_PATHS := [
     "res://mods-unpacked/guardipee14-AdaptiveSmartManager/scripts/global/asm_utils.gd",
@@ -80,7 +81,7 @@ func _init() -> void:
     _add_translations()
 
     ModLoaderLog.success(
-        "Adaptive Smart Manager initialized, version: %s (test20 compact unified Demand layout)" % MOD_VERSION,
+        "Adaptive Smart Manager initialized, version: %s (%s recovered test20 package)" % [MOD_VERSION, MOD_BUILD],
         LOG_NAME
     )
     ModLoaderLog.info(

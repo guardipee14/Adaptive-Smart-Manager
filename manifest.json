@@ -2,7 +2,7 @@
   "name": "AdaptiveSmartManager",
   "namespace": "guardipee14",
   "version_number": "0.1.0",
-  "description": "Adaptive Smart Manager v0.1.0 test20 compact unified Demand layout: unified Thread/GPU managers with fair Demand shortage handling, full-supply surplus redistribution, explicit allocation diagnostics, and defensive compatibility metadata.",
+  "description": "Adaptive Smart Manager v0.1.0-test21: recovered original test20 gameplay and compiled English translation, with a distinct package identity. Unified Thread/GPU managers; rebuilt-candidate in-game validation pending.",
   "website_url": "https://github.com/guardipee14/Adaptive-Smart-Manager",
   "dependencies": [],
   "extra": {
