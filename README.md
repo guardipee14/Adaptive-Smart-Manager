@@ -4,7 +4,15 @@ Adaptive Smart Manager (ASM) is a unified replacement for **Smart Thread Manager
 
 It keeps the familiar player-facing manager workflow while sharing one implementation underneath, fixing allocation/runtime issues found during testing, and exposing a read-only compatibility surface for Adaptive Auto Connector (AAC).
 
-> **Current public build:** `v0.1.0-test20` — release-candidate testing build.
+> **Current source build:** `v0.1.0-test23` — Upload Labs 3.0 compatibility prerelease candidate. See [GitHub Releases](https://github.com/guardipee14/Adaptive-Smart-Manager/releases) for downloadable packages.
+
+**Reconstructed candidate:** `v0.1.0-test21` (not released; fresh in-game validation pending). It preserves the original test20 manager logic, restores a compiled English translation generated from the CSV, and corrects the stale GPU description in the original binary. GitHub's test20 download differs from the original tested archive; see [recovery provenance](RECOVERY.md).
+
+**Local compatibility hotfix:** `v0.1.0-test22` follows the installed game's ordinary Thread/GPU Manager unlock requirements for both smart nodes and their guides. In Upload Labs 3.0, Thread Manager uses `research.thread_manager`, not the former `perk.thread_manager`. Older games retain their original perk requirement. This does not grant research, alter saves, replace existing nodes, or change resource allocation. Full 3.0 gameplay compatibility is not implied by this focused fix.
+
+**Local demand hotfix:** `v0.1.0-test23` additionally reads 3.0's `Process` component for finite processing demand instead of classifying every modern machine as uncapped. It uses consumed input quantities and the current goal/speed conversion, refreshes changing requirements, and preserves legacy `get_goal()` support. Truly uncapped sellers/miners remain uncapped. Ratio/Demand/Graph allocation policies, manager ids, saved modes and Base settings are unchanged; no save migration or node replacement is required.
+
+Test23 includes both hotfixes and the test21 translation recovery. Earlier public test20 artifacts are preserved; see [recovery provenance](RECOVERY.md) before comparing their checksums or gameplay.
 
 ## What it keeps
 
@@ -33,6 +41,14 @@ It keeps the familiar player-facing manager workflow while sharing one implement
 
 ## Current validation
 
+- Upload Labs `3.0.9` live startup: test23 resource preflight and both manager registrations passed; the CPU manager correctly identified 24 finite consumers and one genuinely uncapped target, rather than 25 uncapped targets. GPU speed-only consumers remained uncapped.
+- CPU/GPU Demand and saved Base settings loaded unchanged. The startup allocation sample conserved available CPU/GPU supply without over-allocation.
+- Isolated demand regression suite: 138 checks passed on Godot `4.7.2` and `4.6.1`. The same suite reproduces 43 behavioral failures against pre-fix test22.
+- Isolated unlock suite: 158 checks passed. English translation: all 15 messages verified. Package verification checks every runtime file against source.
+- Coverage is focused unlock/demand compatibility, not exhaustive 3.0 gameplay or a new full AAC integration certification. See [verification instructions](tests/README.md).
+
+### Historical test20 evidence
+
 `v0.1.0-test20` has been runtime-tested with:
 
 - Upload Labs `2.2.12`
@@ -44,15 +60,15 @@ It keeps the familiar player-facing manager workflow while sharing one implement
 - Base `count` / `count/s` switching
 - large topology changes while AAC graph validation remained structurally clean
 
-The current build is still labeled **test** while the final ASM + AAC compatibility pass is completed.
+The original test20 package also passed AAC test7's targeted integration checks on September 11, 2026. Those results do not establish that the different GitHub test20 download or reconstructed test21 package has passed a fresh game run. See [test21 verification and build instructions](tests/README.md).
 
 ## Installation
 
 1. Remove/disable the original `kuuk-SmartThreadManager` and `kuuk-SmartGPUManager` mods. ASM registers the same window ids and must not run alongside them.
-2. Download the current public-test package `guardipee14-AdaptiveSmartManager-v0.1.0-test20.zip` from the public-test announcement/Discord attachment.
-3. Verify SHA-256: `b3b8aad369e28ce19874dee6bceec0e07d84de9c3914ac05ed708f7fe66c7dfc`.
-4. Place the ZIP in your Upload Labs `mods` folder.
-5. Start Upload Labs and verify both Smart Thread Manager and Smart GPU Manager appear normally in your existing save.
+2. Save and close Upload Labs, and back up your save and existing ASM ZIP before replacing it.
+3. Use `guardipee14-AdaptiveSmartManager-v0.1.0-test23.zip` from its matching [GitHub prerelease](https://github.com/guardipee14/Adaptive-Smart-Manager/releases), or build it from a clean source checkout with `tools/New-Release.ps1 -ReleaseLabel 0.1.0-test23`. Verify the downloaded ZIP against its accompanying `.sha256` file; rebuilt ZIP hashes can differ because of timestamps/line endings.
+4. Move the previous ASM ZIP outside the game's `mods` folder, then place the new ZIP there without extracting it. Do not leave two ASM versions installed together.
+5. Start Upload Labs and verify both managers in your existing save. Test23 does not require replacing placed nodes, changing connections or switching Mode/Base choices. A genuine uncapped Processing Seller can still appear as `∞ ×1`; ordinary processing machines should contribute finite demand.
 
 Public-test notes and feedback thread: [Issue #1](https://github.com/guardipee14/Adaptive-Smart-Manager/issues/1).
 
@@ -68,7 +84,7 @@ Your Steam library path may be different.
 
 ASM preserves the manager ids/resources AAC expects and exposes a read-only manager snapshot. AAC does **not** receive ownership of manager distribution or automatic connection mutation through this interface.
 
-The current AAC `v0.1.14` public test still reports the original `kuuk-*` manager ids as missing. Explicit ASM detection is staged for AAC `v0.1.15` and will be validated after ASM is frozen.
+AAC `v0.1.15-test7` explicitly detects ASM. Its three targeted game checks passed with the original test20 archive in Demand mode (Thread count/s, GPU count). Test23 keeps the same read-only interface and was observed starting alongside AAC with corrected live demand, but those historical Accept/Undo and scoring checks were not repeated for test23.
 
 ## Attribution
 

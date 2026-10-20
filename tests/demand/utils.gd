@@ -1,0 +1,2 @@
+extends Node
+enum resource_types { MATERIAL, FLOW, BOOST, MATERIAL_LIMITED, SETTING, HEAT, FLUID, UNIT }
