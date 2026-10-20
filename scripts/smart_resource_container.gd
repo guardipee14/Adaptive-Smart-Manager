@@ -309,10 +309,11 @@ func _update_data() -> void:
 
 
 func _update_state_tick() -> void:
-    # Behavior-preservation rule: kuuk Smart Manager 3.0.0 caches each
-    # dependent input's required-normalization when the window binding is
-    # created. Its SmartWindowData.update() method exists but is not called
-    # from tick(). Preserve that exact runtime behavior here.
+    for data in state.wdata.values():
+        data.update()
+    _wdata_set_roles(state)
+    if graph != null:
+        _wdata_set_graph_roles(state)
     state.demands = _get_demands(state)
 
 

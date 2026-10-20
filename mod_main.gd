@@ -3,8 +3,9 @@ extends Node
 const MOD_DIR := "guardipee14-AdaptiveSmartManager"
 const MOD_ID := "guardipee14-AdaptiveSmartManager"
 const MOD_VERSION := "0.1.0"
-const MOD_BUILD := "test21"
+const MOD_BUILD := "test23"
 const LOG_NAME := "guardipee14:ASM:Main"
+const MANAGER_UNLOCKS := preload("res://mods-unpacked/guardipee14-AdaptiveSmartManager/scripts/global/manager_unlocks.gd")
 const RUNTIME_PREFLIGHT_PATHS := [
     "res://mods-unpacked/guardipee14-AdaptiveSmartManager/scripts/global/asm_utils.gd",
     "res://mods-unpacked/guardipee14-AdaptiveSmartManager/scripts/global/window_graph.gd",
@@ -81,7 +82,7 @@ func _init() -> void:
     _add_translations()
 
     ModLoaderLog.success(
-        "Adaptive Smart Manager initialized, version: %s (%s recovered test20 package)" % [MOD_VERSION, MOD_BUILD],
+        "Adaptive Smart Manager initialized, version: %s (%s 3.0 process-demand compatibility)" % [MOD_VERSION, MOD_BUILD],
         LOG_NAME
     )
     ModLoaderLog.info(
@@ -175,6 +176,17 @@ func _add_to_data() -> void:
             LOG_NAME
         )
         return
+
+    # 3.0 moved Thread Manager from a token perk to ordinary research.
+    # Follow the installed game's base managers, not a version-specific key.
+    MANAGER_UNLOCKS.synchronize(data, Data.windows)
+    ModLoaderLog.info(
+        "Smart manager unlocks follow base managers: CPU=%s; GPU=%s" % [
+            str(data.windows.smart_thread_manager.requirement),
+            str(data.windows.smart_gpu_manager.requirement)
+        ],
+        LOG_NAME
+    )
 
     var success := true
     var registered_windows: Array[String] = []

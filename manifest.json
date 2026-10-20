@@ -2,7 +2,7 @@
   "name": "AdaptiveSmartManager",
   "namespace": "guardipee14",
   "version_number": "0.1.0",
-  "description": "Adaptive Smart Manager v0.1.0-test21: recovered original test20 gameplay and compiled English translation, with a distinct package identity. Unified Thread/GPU managers; rebuilt-candidate in-game validation pending.",
+  "description": "Adaptive Smart Manager v0.1.0-test23: reads 3.0 Process goals, consumed inputs and speed conversion for finite CPU/GPU demand; refreshes dynamic requirements. Retains test22 unlock compatibility, manager ids, settings and distribution policies.",
   "website_url": "https://github.com/guardipee14/Adaptive-Smart-Manager",
   "dependencies": [],
   "extra": {
@@ -12,7 +12,8 @@
         "kuuk (original Smart Manager code)"
       ],
       "compatible_game_version": [
-        "2.2.12"
+        "2.2.12",
+        "3.0.9"
       ],
       "compatible_mod_loader_version": [
         "7.0.1"

@@ -2,6 +2,7 @@
 param(
     [string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot),
     [string]$ReleaseLabel,
+    [string]$OutputDirectory,
     [switch]$Publish,
     [switch]$Draft,
     [switch]$Prerelease,
@@ -15,7 +16,11 @@ $modFolderName = 'guardipee14-AdaptiveSmartManager'
 $manifestPath = Join-Path $ProjectRoot 'manifest.json'
 $readmePath = Join-Path $ProjectRoot 'README.md'
 $changelogPath = Join-Path $ProjectRoot 'CHANGELOG.md'
-$releaseDirectory = Join-Path $ProjectRoot 'release'
+$releaseDirectory = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
+    Join-Path $ProjectRoot 'release'
+} else {
+    [IO.Path]::GetFullPath($OutputDirectory)
+}
 
 $runtimeItems = @(
     'manifest.json',

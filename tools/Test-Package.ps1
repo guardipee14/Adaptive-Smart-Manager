@@ -16,7 +16,15 @@ foreach ($item in @('manifest.json', 'mod_main.gd', 'data', 'scenes', 'scripts',
         $expected.Add($prefix + $relative, $file.FullName)
     }
 }
-if ($expected.Count -ne 19) { throw "Expected 19 package source files, got $($expected.Count)." }
+$sourceMain = Get-Content -LiteralPath (Join-Path $rootPath 'mod_main.gd') -Raw
+$buildMatch = [regex]::Match($sourceMain, '(?m)^const MOD_BUILD := "(test21|test22|test23)"\r?$')
+if (-not $buildMatch.Success) { throw 'Unknown package build identity.' }
+$build = $buildMatch.Groups[1].Value
+$fileCount = if ($build -in @('test22','test23')) { 20 } else { 19 }
+if ($expected.Count -ne $fileCount) { throw "Expected $fileCount package source files, got $($expected.Count)." }
+if ($OriginalArchive -and $build -ne 'test21') {
+    throw 'Original-test20 exact gameplay reconciliation is specific to test21. Newer builds intentionally change compatibility behavior; run the unlock and demand regression tests.'
+}
 
 function Read-EntryText($Entry) {
     if ($null -eq $Entry) { throw 'Required ZIP entry missing.' }
@@ -45,10 +53,10 @@ try {
     }
     if ($seen.Count -ne $expected.Count) { throw 'Package omits source files.' }
     $main = Read-EntryText $zip.GetEntry($prefix + 'mod_main.gd')
-    if ($main -notmatch '(?m)^const MOD_BUILD := "test21"\r?$') { throw 'Missing test21 runtime identity.' }
+    if ($main -notmatch ('(?m)^const MOD_BUILD := "' + $build + '"\r?$')) { throw "Missing $build runtime identity." }
     $manifest = (Read-EntryText $zip.GetEntry($prefix + 'manifest.json')) | ConvertFrom-Json
-    if ($manifest.version_number -ne '0.1.0' -or $manifest.description -notmatch 'v0.1.0-test21') {
-        throw 'Manifest does not identify test21.'
+    if ($manifest.version_number -ne '0.1.0' -or $manifest.description -notmatch [regex]::Escape("v0.1.0-$build")) {
+        throw "Manifest does not identify $build."
     }
     $compiledHash = (Get-FileHash -LiteralPath $expected[$prefix + 'translations/AdaptiveSmartManager.en.translation']).Hash
     if ($compiledHash -cne '997F9B755BDFADE7E23A8D47EE45520F2CD1AC4FE0A3E3ADAD49898A13A17B61') {
@@ -89,7 +97,7 @@ finally {
     $zip.Dispose()
 }
 [pscustomobject]@{
-    Build = '0.1.0-test21'
+    Build = "0.1.0-$build"
     FilesVerified = $expected.Count
     SHA256 = (Get-FileHash -LiteralPath $Archive).Hash.ToLowerInvariant()
     OriginalGameplayVerified = [bool]$OriginalArchive

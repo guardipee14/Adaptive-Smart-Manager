@@ -10,6 +10,7 @@ enum SmartWindowRoles {
 var window: WindowBase
 var inputs: Dictionary[String, ResourceContainer]
 var role: SmartWindowRoles = SmartWindowRoles.ARTIFACT
+var process_component: Node
 
 var provided: Array = []
 var dependent: Array = []
@@ -29,17 +30,37 @@ var own_sources: Array:
 
 func _init(target_window: WindowBase) -> void:
     window = target_window
-
-    for container: ResourceContainer in window.containers.filter(
-        func(c): return c.is_in_group("input")
-    ):
-        inputs.set(container.id, container)
+    process_component = window.get_node_or_null("Process")
 
     set_containers()
 
+
+func set_containers(sources: Array = []) -> void:
+    inputs.clear()
+    for container: ResourceContainer in window.containers:
+        if is_instance_valid(container) and container.is_in_group("input"):
+            inputs[container.id] = container
+    provided = inputs.keys().filter(sources.has)
+    dependent = inputs.keys().filter(
+        func(name):
+            return (
+                not provided.has(name)
+                and _is_material(inputs[name])
+                and _is_process_material(inputs[name])
+            )
+    )
+
+    for name in container_data.keys():
+        if not dependent.has(name):
+            container_data.erase(name)
+
+    for name in dependent:
+        if not container_data.has(name):
+            container_data[name] = SmartContainerData.new(inputs[name])
+
     if "demand" in window:
         role = SmartWindowRoles.MANAGER
-    elif window.has_method("get_goal") and not dependent.is_empty():
+    elif not dependent.is_empty() and (window.has_method("get_goal") or _has_modern_speed()):
         role = SmartWindowRoles.CONSUMER
     elif window.is_in_group("window"):
         role = SmartWindowRoles.STORAGE
@@ -47,22 +68,42 @@ func _init(target_window: WindowBase) -> void:
         role = SmartWindowRoles.ARTIFACT
 
 
-func set_containers(sources: Array = []) -> void:
-    provided = inputs.keys().filter(sources.has)
-    dependent = inputs.keys().filter(
-        func(name):
-            return (
-                not provided.has(name)
-                and _is_material(inputs[name])
-            )
+func _is_modern_process() -> bool:
+    return (
+        not window.has_method("get_goal")
+        and is_instance_valid(process_component)
+        and "goal_obj" in process_component
+        and "speed_obj" in process_component
+        and "resources" in process_component
+        and "should_consume" in process_component
     )
 
-    for name in provided:
-        container_data.erase(name)
 
-    for name in dependent:
-        if not container_data.has(name):
-            container_data[name] = SmartContainerData.new(inputs[name])
+func _has_modern_speed() -> bool:
+    if not _is_modern_process():
+        return false
+    var speed = process_component.speed_obj
+    return (
+        is_instance_valid(process_component.goal_obj)
+        and is_instance_valid(speed)
+        and "resource" in speed
+        and "rate" in speed
+        and is_instance_valid(speed.resource)
+        and provided.has(speed.resource.id)
+        and (not "inf_speed" in speed or not speed.inf_speed)
+    )
+
+
+func _is_process_material(container: ResourceContainer) -> bool:
+    if not _is_modern_process():
+        return true
+    # 3.0 keeps consumed resources on Process, not every material-looking
+    # container elsewhere in a window (which can include unrelated buffers).
+    return (
+        bool(process_component.should_consume)
+        and process_component.resources.has(container)
+        and float(container.required) > 0.0
+    )
 
 
 func get_demand() -> float:
@@ -124,15 +165,25 @@ func get_min_count_ratio() -> float:
 
 
 func get_goal() -> float:
-    if role == SmartWindowRoles.CONSUMER:
+    if role != SmartWindowRoles.CONSUMER or window.paused:
+        return 0.0
+    if window.has_method("get_goal"):
         return float(window.get_goal())
+    if _has_modern_speed():
+        var rate := float(process_component.speed_obj.rate)
+        if rate <= 0.0 or not is_finite(rate):
+            return 0.0
+        # Process.progress advances by supplied speed * rate. Convert the
+        # work per operation back to units of the manager's CPU/GPU supply.
+        var goal := float(process_component.goal_obj.value) / rate
+        return goal if is_finite(goal) and goal > 0.0 else 0.0
     return 0.0
 
 
 func update() -> void:
-    # Original 3.0.0 defines this refresh but never calls it. Adaptive Smart
-    # Manager calls it each tick so dynamic `required` changes cannot leave
-    # demand normalization stale.
+    # Required amounts, goal values and finite/uncapped roles can change
+    # during play. The manager refreshes this before reading each demand.
+    set_containers(provided.duplicate())
     for data in container_data.values():
         data.update()
 

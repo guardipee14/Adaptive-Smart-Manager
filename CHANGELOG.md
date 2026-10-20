@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.1.0-test23
+
+Upload Labs 3.0 unlock/demand compatibility prerelease candidate.
+
+- Recognize modern processing consumers using their Process component, while preserving legacy window-level get_goal support.
+- Calculate finite CPU/GPU demand from consumed inputs and current process goal divided by the resource-speed conversion rate.
+- Exclude unrelated buffers and non-consumed resources from modern demand. Keep genuine speed-only consumers uncapped.
+- Refresh required-input normalization and role lists before distribution, respecting paused consumers.
+- Preserve test22 unlock fixes, save-facing ids, connections, modes, Base settings and all three allocation policies.
+- Live-smoke-tested on Upload Labs 3.0.9; 138 demand checks passed on Godot 4.7.2 and 4.6.1, plus 158 unlock checks and 15 translation checks. Full 3.0 gameplay/AAC certification remains outside this focused validation.
+
+## v0.1.0-test22
+
+Local Upload Labs 3.0 unlock-compatibility hotfix; no publication implied.
+
+- Inherit CPU/GPU unlock requirements and requirement modes from the installed game's ordinary managers before registration.
+- Apply the same requirements to each manager's guide entries, without sharing mutable arrays.
+- Fix the obsolete CPU `perk.thread_manager` gate on 3.0 while retaining the old perk gate on 2.2.
+- Keep allocation code, scenes, node ids, connections, and saves unchanged.
+- Add isolated regression tests for 2.2/3.0 requirements, locked/unlocked progression, mode preservation, and independent arrays.
+
 ## v0.1.0-test21
 
 Unpublished package-reconstruction candidate; fresh in-game validation pending.
